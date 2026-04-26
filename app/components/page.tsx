@@ -1,7 +1,18 @@
+import type { Metadata } from "next"
+
+import Hero from "@/components/hero"
+
+export const metadata: Metadata = {
+  title: "Components",
+  description:
+    "Registry components with real motion. Install and theme like the rest of your system.",
+}
+
 export default function ComponentsPage() {
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <h1 className="text-2xl font-semibold">Components</h1>
-    </div>
+    <Hero
+      headline="Motion-first components."
+      subheadline="Motion, depth, and conversion, one theme, every surface."
+    />
   )
 }
