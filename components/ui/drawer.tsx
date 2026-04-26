@@ -5,24 +5,14 @@ import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
 
-/**
- * We disable Vaul's `shouldScaleBackground` and implement the background
- * effect ourselves so we can control the border-radius (24px vs Vaul's 8px).
- *
- * The wrapper gets:
- * - scale: 1 → 0.96
- * - translateY: 0 → 14px
- * - borderRadius: 0 → 24px
- *
- * All three are driven by the same progress value (0 = closed, 1 = open).
- * During open/close: CSS transition handles it.
- * During drag: set directly per-frame via onDrag (transition: none).
- * After release: CSS transition takes over again.
- */
+// ── Background scale effect ─────────────────────────────────────────
+// Matches Vaul's own transition curve and duration.
+// We handle it ourselves so we can use clip-path (viewport-aware
+// rounded corners) instead of border-radius (page-top corners).
 
 const SCALE = 0.98
 const TRANSLATE_Y = 14
-const DURATION = "0.5s"
+const DURATION_S = 0.5
 const EASING = "cubic-bezier(0.32, 0.72, 0, 1)"
 
 function getWrapper() {
@@ -31,45 +21,97 @@ function getWrapper() {
   )
 }
 
-/** Read --radius from CSS and compute --radius-3xl in px */
-function getRadius() {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue("--radius")
-    .trim()
-  const rem = parseFloat(raw) || 0.75
-  return rem * 2.2 * 16 // --radius-3xl = --radius * 2.2, rem → px
+function getMaxRadius() {
+  const rem =
+    parseFloat(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--radius")
+        .trim()
+    ) || 0.75
+  return rem * 2.2 * 16 // --radius-3xl in px
 }
 
-function applyProgress(el: HTMLElement, progress: number, animate: boolean) {
-  const radius = getRadius()
+function getViewportClip() {
+  const scrollY = window.scrollY
+  const wrapper = getWrapper()
+  const bottom = wrapper
+    ? Math.max(0, wrapper.scrollHeight - scrollY - window.innerHeight)
+    : 0
+  return { top: scrollY, bottom }
+}
+
+/** Set wrapper styles for a given progress (0 = closed, 1 = fully open). */
+function setProgress(
+  el: HTMLElement,
+  progress: number,
+  animated: boolean
+) {
+  const maxR = getMaxRadius()
   const s = 1 - progress * (1 - SCALE)
-  const t = progress * TRANSLATE_Y
-  const r = progress * radius
+  const ty = progress * TRANSLATE_Y
+  const r = progress * maxR
+  const { top, bottom } = getViewportClip()
 
-  el.style.transform = `scale(${s}) translate3d(0, ${t}px, 0)`
   el.style.transformOrigin = "top"
-  el.style.borderRadius = `${r}px`
   el.style.overflow = "hidden"
+  el.style.transform = `scale(${s}) translate3d(0, ${ty}px, 0)`
+  el.style.clipPath =
+    r > 0.1
+      ? `inset(${top}px 0px ${bottom}px 0px round ${r}px)`
+      : "none"
 
-  if (animate) {
-    el.style.transitionProperty = "transform, border-radius"
-    el.style.transitionDuration = DURATION
+  if (animated) {
+    el.style.transitionProperty = "transform"
+    el.style.transitionDuration = `${DURATION_S}s`
     el.style.transitionTimingFunction = EASING
+    animateClipRadius(el, progress === 1 ? 0 : maxR, r, top, bottom)
   } else {
     el.style.transition = "none"
   }
 }
 
-function clearStyles(el: HTMLElement) {
-  el.style.transform = ""
-  el.style.transformOrigin = ""
-  el.style.borderRadius = ""
-  el.style.overflow = ""
-  el.style.transition = ""
-  el.style.transitionProperty = ""
-  el.style.transitionDuration = ""
-  el.style.transitionTimingFunction = ""
+/** Animate only the clip-path radius via rAF to stay in sync with the
+ *  CSS-transitioned transform (clip-path inset values stay fixed). */
+function animateClipRadius(
+  el: HTMLElement,
+  fromR: number,
+  toR: number,
+  top: number,
+  bottom: number
+) {
+  const start = performance.now()
+  const ms = DURATION_S * 1000
+
+  const tick = (now: number) => {
+    const t = Math.min((now - start) / ms, 1)
+    const eased = 1 - Math.pow(1 - t, 3)
+    const r = fromR + (toR - fromR) * eased
+
+    el.style.clipPath =
+      r > 0.1
+        ? `inset(${top}px 0px ${bottom}px 0px round ${r}px)`
+        : "none"
+
+    if (t < 1) requestAnimationFrame(tick)
+  }
+
+  requestAnimationFrame(tick)
 }
+
+function resetWrapper(el: HTMLElement) {
+  ;[
+    "transform",
+    "transformOrigin",
+    "clipPath",
+    "overflow",
+    "transition",
+    "transitionProperty",
+    "transitionDuration",
+    "transitionTimingFunction",
+  ].forEach((p) => el.style.setProperty(p, ""))
+}
+
+// ── Component tree ──────────────────────────────────────────────────
 
 function Drawer({
   onOpenChange,
@@ -77,64 +119,56 @@ function Drawer({
   onRelease,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  const isOpen = React.useRef(false)
+  const open = React.useRef(false)
 
   const handleOpenChange = React.useCallback(
-    (open: boolean) => {
+    (isOpen: boolean) => {
+      open.current = isOpen
       const el = getWrapper()
-      isOpen.current = open
 
       if (el) {
-        if (open) {
-          applyProgress(el, 1, true)
-        } else {
-          applyProgress(el, 0, true)
-          // Clean up after transition ends
+        setProgress(el, isOpen ? 1 : 0, true)
+
+        if (!isOpen) {
           const cleanup = () => {
-            if (!isOpen.current) {
-              clearStyles(el)
-            }
+            if (!open.current) resetWrapper(el)
             el.removeEventListener("transitionend", cleanup)
           }
           el.addEventListener("transitionend", cleanup)
         }
       }
 
-      onOpenChange?.(open)
+      onOpenChange?.(isOpen)
     },
     [onOpenChange]
   )
 
   const handleDrag = React.useCallback(
-    (e: React.PointerEvent<HTMLDivElement>, percentageDragged: number) => {
+    (e: React.PointerEvent<HTMLDivElement>, pct: number) => {
       const el = getWrapper()
-      if (el) {
-        // percentageDragged: 0 = fully open, 1 = dragged to close threshold
-        const progress = Math.max(0, Math.min(1, 1 - percentageDragged))
-        applyProgress(el, progress, false)
-      }
-      onDrag?.(e, percentageDragged)
+      if (el) setProgress(el, Math.max(0, Math.min(1, 1 - pct)), false)
+      onDrag?.(e, pct)
     },
     [onDrag]
   )
 
   const handleRelease = React.useCallback(
-    (e: React.PointerEvent<HTMLDivElement>, open: boolean) => {
+    (e: React.PointerEvent<HTMLDivElement>, willOpen: boolean) => {
       const el = getWrapper()
+
       if (el) {
-        // Animate to final state after release
-        applyProgress(el, open ? 1 : 0, true)
-        if (!open) {
+        setProgress(el, willOpen ? 1 : 0, true)
+
+        if (!willOpen) {
           const cleanup = () => {
-            if (!isOpen.current) {
-              clearStyles(el)
-            }
+            if (!open.current) resetWrapper(el)
             el.removeEventListener("transitionend", cleanup)
           }
           el.addEventListener("transitionend", cleanup)
         }
       }
-      onRelease?.(e, open)
+
+      onRelease?.(e, willOpen)
     },
     [onRelease]
   )
@@ -150,39 +184,32 @@ function Drawer({
   )
 }
 
-function DrawerTrigger({
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
+function DrawerTrigger(
+  props: React.ComponentProps<typeof DrawerPrimitive.Trigger>
+) {
   return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
 }
 
-function DrawerPortal({
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
+function DrawerPortal(
+  props: React.ComponentProps<typeof DrawerPrimitive.Portal>
+) {
   return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
 }
 
-function DrawerClose({
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Close>) {
+function DrawerClose(
+  props: React.ComponentProps<typeof DrawerPrimitive.Close>
+) {
   return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />
 }
 
 function DrawerOverlay({
   className,
-  style,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Overlay>) {
   return (
     <DrawerPrimitive.Overlay
       data-slot="drawer-overlay"
-      className={cn("fixed inset-0 z-50", className)}
-      style={{
-        backgroundColor: "var(--drawer-overlay-bg, rgba(0,0,0,0.3))",
-        backdropFilter: "var(--drawer-overlay-blur, blur(0px))",
-        WebkitBackdropFilter: "var(--drawer-overlay-blur, blur(0px))",
-        ...style,
-      }}
+      className={cn("fixed inset-0 z-50 bg-black/30", className)}
       {...props}
     />
   )
@@ -194,7 +221,7 @@ function DrawerContent({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
   return (
-    <DrawerPortal data-slot="drawer-portal">
+    <DrawerPortal>
       <DrawerOverlay />
       <DrawerPrimitive.Content
         data-slot="drawer-content"
