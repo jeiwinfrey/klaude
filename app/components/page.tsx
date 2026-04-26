@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import Hero from "@/components/hero"
+import { Showcase } from "@/components/component-showcase"
 
 export const metadata: Metadata = {
   title: "Components",
@@ -10,9 +11,12 @@ export const metadata: Metadata = {
 
 export default function ComponentsPage() {
   return (
-    <Hero
-      headline="Motion-first components."
-      subheadline="Motion, depth, and conversion, one theme, every surface."
-    />
+    <>
+      <Hero
+        headline="Motion-first components."
+        subheadline="Motion, depth, and conversion, one theme, every surface."
+      />
+      <Showcase />
+    </>
   )
 }
