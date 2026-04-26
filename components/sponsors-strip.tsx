@@ -13,12 +13,12 @@ const SPONSORS: readonly {
   name: string
   Icon: FC<{ className?: string; "aria-hidden"?: boolean }>
 }[] = [
-  { name: "Lumen", Icon: IconLightBulb },
-  { name: "Northwind", Icon: IconWind },
-  { name: "Atlas", Icon: IconGlobe2 },
-  { name: "Vector", Icon: IconLinear },
-  { name: "Pulse", Icon: IconLineChart1 },
-  { name: "Harbor", Icon: IconAnchor },
+  { name: "Sponsor1", Icon: IconLightBulb },
+  { name: "Sponsor2", Icon: IconWind },
+  { name: "Sponsor3", Icon: IconGlobe2 },
+  { name: "Sponsor4", Icon: IconLinear },
+  { name: "Sponsor5", Icon: IconLineChart1 },
+  { name: "Sponsor6", Icon: IconAnchor },
 ]
 
 type SponsorsStripProps = {
@@ -28,7 +28,7 @@ type SponsorsStripProps = {
 export function SponsorsStrip({ className }: SponsorsStripProps) {
   return (
     <div
-      className={cn("mx-auto w-full max-w-6xl px-9", className)}
+      className={cn("mx-auto w-full max-w-6xl px-12", className)}
       role="region"
       aria-label="Sponsors and partners"
     >
