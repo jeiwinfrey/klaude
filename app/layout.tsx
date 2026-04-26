@@ -23,10 +23,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
-      <body className="min-h-screen">
+      <body className="min-h-screen bg-black">
         <ThemeProvider>
+        <div vaul-drawer-wrapper="" className="min-h-screen bg-background">
         <Navbar />
           {children}
+        </div>
         </ThemeProvider>
       </body>
     </html>
