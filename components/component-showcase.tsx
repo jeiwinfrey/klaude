@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import { AccordionDemo } from "@/components/reusables/demo/accordion-demo"
 import { ButtonDemo } from "@/components/reusables/demo/button-demo"
 import { DrawerDemo } from "@/components/reusables/demo/drawer-demo"
 import { TabsDemo } from "@/components/reusables/demo/tabs-demo"
@@ -11,6 +12,7 @@ type ShowcaseCard = {
 }
 
 const cards: ShowcaseCard[] = [
+  { id: "accordion", title: "Accordion", demo: <AccordionDemo /> },
   { id: "button", title: "Button", demo: <ButtonDemo /> },
   { id: "drawer", title: "Drawer", demo: <DrawerDemo /> },
   { id: "tabs", title: "Tabs", demo: <TabsDemo /> },
