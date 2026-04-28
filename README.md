@@ -1,21 +1,9 @@
-# Next.js template
+# klaude ui
 
-This is a Next.js template with shadcn/ui.
+`klaude ui` is a refined layer of design and motion on top of shadcn components.
 
-## Adding components
+The goal is simple: keep the same familiar usage patterns while making the components feel more polished, more intentional, and more alive. The repo focuses on visual refinement, interaction quality, and seamless motion rather than changing how developers use the primitives.
 
-To add components to your app, run the following command:
+This project is also expanding beyond components and will include sections over time.
 
-```bash
-npx shadcn@latest add button
-```
-
-This will place the ui components in the `components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button";
-```
+Live site: [klaude-ui.com](https://klaude-ui.com)
