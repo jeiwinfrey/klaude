@@ -13,9 +13,9 @@ type ShowcaseCard = {
 
 const cards: ShowcaseCard[] = [
   { id: "accordion", title: "Accordion", demo: <AccordionDemo /> },
-  { id: "button", title: "Button", demo: <ButtonDemo /> },
   { id: "drawer", title: "Drawer", demo: <DrawerDemo /> },
   { id: "tabs", title: "Tabs", demo: <TabsDemo /> },
+  { id: "button", title: "Button", demo: <ButtonDemo /> },
 ]
 
 export function Showcase() {
